@@ -1,0 +1,50 @@
+name: goole-bot
+
+on:
+  schedule:
+    # Запуск у 05-ту хвилину кожні 4 години (00:05, 04:05 і т.д.)
+    - cron: '25 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  make-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch AVAX Price
+        run: |
+          # 1. Рандомна затримка (до 18 хвилин)
+          sleep $((RANDOM % 1480))
+          
+          TIMESTAMP=$(date "+%Y-%m-%d %H:%M")
+
+          # 2. Отримуємо ціну AVAX (ідентифікатор: avalanche-2)
+          RESPONSE=$(curl -s --max-time 15 "https://api.coingecko.com/api/v3/simple/price?ids=avalanche-2&vs_currencies=usd")
+          AVAX=$(echo $RESPONSE | jq -r '."avalanche-2".usd // empty')
+
+          # 3. Назва файлу (змініть на одну з назв нижче)
+          FILE_NAME="c_chain_gas.json"
+
+          # 4. Логіка запису
+          if [ -z "$AVAX" ] || [ "$AVAX" == "null" ]; then
+            # План Б: системне повідомлення (стиль Валідатора)
+            LOG_ENTRY="[$TIMESTAMP] EVM: contract interaction stable"
+            COMMIT_MSG="node: health check $TIMESTAMP [skip ci]"
+          else
+            # План А: ціна монети
+            LOG_ENTRY="[$TIMESTAMP] AVAX Market Value: \$$AVAX USD"
+            COMMIT_MSG="avax: price feed update $TIMESTAMP [skip ci]"
+          fi
+
+          # 5. Оновлення файлу та збереження останніх 45 рядків
+          echo "$LOG_ENTRY" >> $FILE_NAME
+          echo "$(tail -n 35 $FILE_NAME)" > $FILE_NAME
+
+          # 6. Пуш у репозиторій
+          git config --local user.email "mrkstolo@gmail.com"
+          git config --local user.name "GitHub Action Bot"
+          git add $FILE_NAME
+          git commit -m "$COMMIT_MSG"
+          git push
