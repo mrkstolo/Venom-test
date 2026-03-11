@@ -3,7 +3,7 @@ name: goole-bot
 on:
   schedule:
     # Запуск у 05-ту хвилину кожні 4 години (00:05, 04:05 і т.д.)
-    - cron: '25 */4 * * *'
+    - cron: '25 */7 * * *'
   workflow_dispatch:
 
 jobs:
